@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 
 namespace crypto
 {
@@ -26,8 +27,20 @@ namespace crypto
             Console.WriteLine("-d path_to_public_key path_to_private_key@password path_to_input_file path_to_output_file");
         }
 
+        static void log2File(string line)
+        {
+            var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            path = Path.Combine(path, "crypto.log");
+            using (var logger = File.AppendText(path))
+            {
+                logger.Write(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss "));
+                logger.WriteLine(line);
+            }
+        }
+
         static void Main(string[] args)
         {
+            log2File("v1.0.0.0");
             // -e|-d 
             // path_to_public_key
             // path_to_private_key@password|null@null
@@ -142,10 +155,14 @@ namespace crypto
             if (info.Length <= MAX_SIZE)
             {
                 byte[] oriBytes = File.ReadAllBytes(inputFile);
+                log2File("Encrypting a small file " + inputFile + " to " + outputFile);
+                DateTime start = DateTime.UtcNow;
                 using (Stream outputStream = File.Create(outputFile))
                 {
                     Encrypt(oriBytes, oriBytes.Length, "crypto", outputStream);
                 }
+                DateTime end = DateTime.UtcNow;
+                log2File("Encrypted: " + end.Subtract(start).Seconds.ToString());
                 return;
             }
             var mapFile = outputFile + ".map";
@@ -153,6 +170,8 @@ namespace crypto
             int i = 0;
             DeleteFileIfExists(mapFile);
             var logger = File.AppendText(mapFile);
+            log2File("Encrypting a file " + inputFile + " to " + outputFile);
+            DateTime startTime = DateTime.UtcNow;
             using (var inStream = File.OpenRead(inputFile))
             {
                 while (true)
@@ -179,6 +198,8 @@ namespace crypto
             }
             logger.Close();
             logger.Dispose();
+            DateTime endTime = DateTime.UtcNow;
+            log2File("Encrypted: " + endTime.Subtract(startTime).Seconds.ToString());
         }
 
         static void Decrypt(string inputFile, string outputFile)
